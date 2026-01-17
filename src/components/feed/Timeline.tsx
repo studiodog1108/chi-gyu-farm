@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useImperativeHandle, useState, useTransition, forwardRef } from 'react';
 
 import { PostCard } from '@/components/feed/PostCard';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,10 @@ interface PostWithAuthor extends Post {
   comments: { id: string }[];
 }
 
+export interface TimelineRef {
+  refresh: () => void;
+}
+
 interface TimelineProps {
   initialPosts: PostWithAuthor[];
   currentUserId?: string;
@@ -21,11 +25,14 @@ interface TimelineProps {
 
 const PAGE_SIZE = 20;
 
-export function Timeline({
-  initialPosts,
-  currentUserId,
-  tagFilter,
-}: TimelineProps) {
+export const Timeline = forwardRef<TimelineRef, TimelineProps>((
+  {
+    initialPosts,
+    currentUserId,
+    tagFilter,
+  }: TimelineProps,
+  ref
+) => {
   const [posts, setPosts] = useState<PostWithAuthor[]>(initialPosts);
   const [hasMore, setHasMore] = useState(initialPosts.length >= PAGE_SIZE);
   const [isPending, startTransition] = useTransition();
@@ -74,6 +81,37 @@ export function Timeline({
     setPosts((prev) => prev.filter((p) => p.id !== postId));
   };
 
+  const refresh = async () => {
+    const supabase = createClient();
+    let query = supabase
+      .from('posts')
+      .select(
+        `
+        *,
+        profiles (*),
+        reactions (type, user_id),
+        comments (id)
+      `
+      )
+      .order('created_at', { ascending: false })
+      .limit(PAGE_SIZE);
+
+    if (tagFilter) {
+      query = query.contains('hobby_tags', [tagFilter]);
+    }
+
+    const { data } = await query;
+
+    if (data) {
+      setPosts(data as PostWithAuthor[]);
+      setHasMore(data.length >= PAGE_SIZE);
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    refresh,
+  }));
+
   if (posts.length === 0) {
     return (
       <div className="py-12 text-center">
@@ -110,4 +148,6 @@ export function Timeline({
       )}
     </div>
   );
-}
+});
+
+Timeline.displayName = 'Timeline';

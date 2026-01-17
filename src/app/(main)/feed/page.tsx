@@ -1,9 +1,8 @@
 import { Suspense } from 'react';
 
-import { PostForm } from '@/components/feed/PostForm';
-import { Timeline } from '@/components/feed/Timeline';
 import { getHobbyTagById } from '@/constants';
 import { createClient } from '@/lib/supabase/server';
+import { FeedContentClient } from './feed-client';
 
 interface FeedPageProps {
   searchParams: Promise<{ tag?: string }>;
@@ -36,13 +35,15 @@ async function FeedContent({ tagFilter }: { tagFilter?: string }) {
   const { data: posts } = await query;
 
   return (
-    <Timeline
+    <FeedContentClient
       initialPosts={posts ?? []}
       currentUserId={user?.id}
       tagFilter={tagFilter}
     />
   );
 }
+
+export { FeedContentClient } from './feed-client';
 
 export default async function FeedPage({ searchParams }: FeedPageProps) {
   const { tag } = await searchParams;
@@ -67,12 +68,6 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
         </div>
       )}
 
-      {/* Post form */}
-      <div className="mb-6">
-        <PostForm />
-      </div>
-
-      {/* Timeline */}
       <Suspense
         fallback={
           <div className="space-y-4">
