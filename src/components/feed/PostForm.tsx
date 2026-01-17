@@ -57,7 +57,12 @@ export function PostForm({ onPostCreated }: PostFormProps) {
       } as never);
 
       if (insertError) {
-        setError('投稿に失敗しました。もう一度お試しください');
+        console.error('Post creation error:', insertError);
+        if (insertError.code === '42501') {
+          setError('権限エラー: 投稿する権限がありません');
+        } else {
+          setError(`投稿に失敗しました: ${insertError.message}`);
+        }
         return;
       }
 
